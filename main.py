@@ -6,13 +6,74 @@ import collections
 import threading
 import time
 from dotenv import load_dotenv
+import sqlite3
 
 import requests
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 load_dotenv()
+#DATABASE_PATH = (os.getenv('ENGINES_EXCLUDE') or '').split(',')
+#ENGINES_EXCLUDE: list = [int(item if item.isnumeric() else '0') for item in ENGINES_EXCLUDE_STRING]
+#ENGINES_EVENTS_HTTP_URL: str = os.getenv('ENGINES_EVENTS_HTTP_URL')
 
+
+DATABASE_PATH: str = os.getenv('DATABASE_PATH')
+
+class GolfTeams:
+    @staticmethod
+    def now() -> int:
+        return int(time.time() * 1000)
+
+    def __init__(self, dbname: str):
+        self.db: sqlite3.Connection = None
+        self.cur: sqlite3.Cursor = None
+        try:
+            self.db = sqlite3.connect(dbname)
+            self.cur = self.db.cursor()
+        except Exception as e:
+            print('GolfTeams.__init__() exception: ', e.args[0])
+
+    def create_teams_table(self):
+        try:
+            self.cur.execute('''
+             CREATE TABLE IF NOT EXISTS teams(
+                 id INTEGER PRIMARY KEY,
+                 name TEXT NOT NULL,
+                 time INTEGER NOT NULL,
+                 pin TEXT NOT NULL,
+                 results TEXT
+             );
+            ''')
+            self.db.commit()
+        except Exception as e:
+            print('GolfTeams.create_teams_table() exception: ', e.args[0])
+
+    def add_team(self):
+        try:
+            now: int = GolfTeams.now()
+            self.cur.execute(f'''
+             INSERT INTO teams(name,time,pin,results)
+             VALUES ('{f'team-{now}'}',{now},'123','')
+            ''')
+            self.db.commit()
+        except Exception as e:
+            print('GolfTeams.add_team() exception: ', e.args[0])
+
+    def close(self):
+        try:
+            self.db.commit()
+            self.db.close()
+        except Exception as e:
+            print('GolfTeams.close() exception: ', e.args[0])
+
+gt = GolfTeams(DATABASE_PATH)
+gt.create_teams_table()
+gt.add_team()
+gt.close()
+
+
+'''
 class HTTPRequestHandler(BaseHTTPRequestHandler):
     def _get_field_model(self):
         return sr.sm.model_text
@@ -100,3 +161,4 @@ web_server_thread = threading.Thread(target=web_server_thread_function, args=(1,
 web_server_thread.start()
 
 sr.run()
+'''
