@@ -1,5 +1,6 @@
 import os
 import json
+from pickle import NONE
 import string
 from typing import Any
 import collections
@@ -49,11 +50,12 @@ class GolfTeams:
     def drop_teams_table(self):
         try:
             self.cur.execute('''
-             DROP TABLE teams
+             DROP TABLE teams;
             ''')
             self.db.commit()
         except Exception as e:
-            print('GolfTeams.drop_teams_table() exception: ', e.args[0])
+            error = 'GolfTeams.drop_teams_table() exception: ' + e.args[0]
+            raise ValueError(error)
 
     def create_teams_table(self):
         try:
@@ -69,7 +71,8 @@ class GolfTeams:
             ''')
             self.db.commit()
         except Exception as e:
-            print('GolfTeams.create_teams_table() exception: ', e.args[0])
+            error = 'GolfTeams.create_teams_table() exception: ' + e.args[0]
+            raise ValueError(error)
 
     def get_team(self, id=0, name='', pin='') -> list:
         try:
@@ -80,17 +83,17 @@ class GolfTeams:
             elif name != '':
                 condition += f'name={name}'
             elif pin != '':
-                condition += f'pin={pin} AND time<{now-PIN_TIMEOUT}'
+                condition += f'pin="{pin}" AND time>{now-PIN_TIMEOUT}'
             else:
                 raise 'empty consition'
             self.cur.execute(f'''
-             SELECT id,name,time,pin,results,scores FROM teams {condition}
+             SELECT id,name,time,pin,results,scores FROM teams {condition};
             ''')
             rows = self.cur.fetchall()
             return rows
         except Exception as e:
-            print('GolfTeams.get_team() exception: ', e.args[0])
-        return None
+            error = 'GolfTeams.get_team() exception: ' + e.args[0]
+            raise ValueError(error)
 
     def calculate_scores(self, players):
         try:
@@ -99,8 +102,8 @@ class GolfTeams:
                 result += int(player['scores'])
             return result
         except Exception as e:
-            print('GolfTeams.calc_scores() exception: ', e.args[0])
-        return 0
+            error = 'GolfTeams.calculate_scores() exception: ' + e.args[0]
+            raise ValueError(error)
 
     def new_team(self, data=None):
         try:
@@ -108,7 +111,9 @@ class GolfTeams:
                 raise 'no input data'
             now: int = GolfTeams.now()
             pin: str = None
-            while True:
+            if 'pin' in data:
+                pin = data['pin']
+            while not pin:
                 pin_candidate = GolfTeams.generate_pin()
                 teams = self.get_team(pin=pin_candidate)
                 if not teams:
@@ -120,7 +125,7 @@ class GolfTeams:
             scores = self.calculate_scores(data['players'])
             sql: str = f'''
              INSERT INTO teams(name,time,pin,results,scores)
-             VALUES ('{name}',{now},{pin},'{results}','{scores}')
+             VALUES ('{name}',{now},'{pin}','{results}','{scores}');
             '''
             self.cur.execute(sql)
             self.db.commit()
@@ -130,48 +135,41 @@ class GolfTeams:
                 'pin': pin
             }
         except Exception as e:
-            print('GolfTeams.add_team() exception: ', e.args[0])
-            raise e.args[0]
-        return None
+            error = 'GolfTeams.add_team() exception: ' + e.args[0]
+            raise ValueError(error)
 
-    def update_team(self, id: int, data=None):
+    def update_results(self, data=NONE):
         try:
             if not data:
                 raise 'no input data'
-            now: int = GolfTeams.now()
-            pin: str = None
-            while True:
-                pin_candidate = GolfTeams.generate_pin()
-                teams = self.get_team(pin=pin_candidate)
-                if not teams:
-                    pin = pin_candidate
-                    break
-                time.sleep(0.1)
-            name: str = data['name']
-            results = json.dumps(data['players'], separators=(',', ':'))
-            scores = self.calculate_scores(data['players'])
+            team = self.get_team(pin=data['pin'])
+            if team and len(team) == 1:
+                id = team[0][0]
+            players = data['players']
+            results = json.dumps(players, separators=(',', ':'))
+            scores = self.calculate_scores(players)
             sql: str = f'''
-             INSERT INTO teams(name,time,pin,results,scores)
-             VALUES ('{name}',{now},{pin},'{results}','{scores}')
+             UPDATE teams
+             SET results='{results}', scores={scores}
+             WHERE id={id};
             '''
             self.cur.execute(sql)
             self.db.commit()
             return {
-                'id': 0,
-                'name': name,
-                'pin': pin
+                'results': results,
+                'scores': scores
             }
         except Exception as e:
-            print('GolfTeams.add_team() exception: ', e.args[0])
-        return None
+            error = 'GolfTeams.update_team() exception: ' + e.args[0]
+            raise ValueError(error)
 
     def close(self):
         try:
             self.db.commit()
             self.db.close()
         except Exception as e:
-            print('GolfTeams.close() exception: ', e.args[0])
-
+            error = 'GolfTeams.close() exception: ' + e.args[0]
+            raise ValueError(error)
 
 class HTTPRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, *args):
@@ -214,6 +212,8 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     self.gt.drop_teams_table()
                 if parsed_path.path == '/api/team':
                     response = self.gt.new_team(post_body_json)
+                if parsed_path.path == '/api/results':
+                    response = self.gt.update_results(post_body_json)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
@@ -243,8 +243,6 @@ f = open("./tests/new_team.json", "r")
 new_team_tests_text = f.read()
 f.close()
 new_team_tests = json.loads(new_team_tests_text)
-requests.post(f'http://127.0.0.1:{HTTP_SERVER_PORT}/api/dropteams')
 for test in new_team_tests['test_teams']:
-    req = test['body']
-    r = requests.post(f'http://127.0.0.1:{HTTP_SERVER_PORT}/api/team', json=req)
-    aaa = 0
+    req = test['body'] if 'body' in test else None
+    r = requests.post(f'http://127.0.0.1:{HTTP_SERVER_PORT}{test["method"]}', json=req)

@@ -1,5 +1,9 @@
 {
 	"test_teams": [{
+		"method": "/api/dropteams",
+		"result": 200
+	}, {
+		"method": "/api/team",
 		"body": {
 			"name": "animals",
 			"players": [{
@@ -19,6 +23,7 @@
 		"result": 200,
 		"error": null
 	}, {
+		"method": "/api/team",
 		"body": {
 			"name": "fruits",
 			"players": [{
@@ -26,20 +31,22 @@
 				"scores": 0
 			}, {			
 				"name": "pine",
-				"scores": 0
+				"scores": 1
 			}, {			
 				"name": "plum",
-				"scores": 0
+				"scores": 2
 			}, {			
 				"name": "peach",
-				"scores": 0
+				"scores": 3
 			}]
 		},
 		"result": 200,
 		"error": null
 	}, {
+		"method": "/api/team",
 		"body": {
 			"name": "vegetables",
+			"pin": "test",
 			"players": [{
 				"name": "cucumber",
 				"scores": 0
@@ -54,6 +61,7 @@
 		"result": 200,
 		"error": null
 	}, {
+		"method": "/api/team",
 		"body": {
 			"name1": "error_team",
 			"players": [{
@@ -66,5 +74,22 @@
 		},
 		"result": 404,
 		"error": "team name not found"
+	}, {
+		"method": "/api/results",
+		"body": {
+			"pin": "test",
+			"players": [{
+				"name": "cucumber",
+				"scores": 4
+			}, {			
+				"name": "tomato",
+				"scores": 3
+			}, {			
+				"name": "potato",
+				"scores": 8
+			}]
+		},
+		"result": 200,
+		"error": null
 	}]
 }
