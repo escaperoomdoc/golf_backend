@@ -1,0 +1,70 @@
+{
+	"test_teams": [{
+		"body": {
+			"name": "animals",
+			"players": [{
+				"name": "tiger",
+				"scores": 0
+			}, {			
+				"name": "rabbit",
+				"scores": 0
+			}, {			
+				"name": "fox",
+				"scores": 0
+			}, {			
+				"name": "wolf",
+				"scores": 0
+			}]
+		},
+		"result": 200,
+		"error": null
+	}, {
+		"body": {
+			"name": "fruits",
+			"players": [{
+				"name": "apple",
+				"scores": 0
+			}, {			
+				"name": "pine",
+				"scores": 0
+			}, {			
+				"name": "plum",
+				"scores": 0
+			}, {			
+				"name": "peach",
+				"scores": 0
+			}]
+		},
+		"result": 200,
+		"error": null
+	}, {
+		"body": {
+			"name": "vegetables",
+			"players": [{
+				"name": "cucumber",
+				"scores": 0
+			}, {			
+				"name": "tomato",
+				"scores": 0
+			}, {			
+				"name": "potato",
+				"scores": 0
+			}]
+		},
+		"result": 200,
+		"error": null
+	}, {
+		"body": {
+			"name1": "error_team",
+			"players": [{
+				"name": "1",
+				"scores": 0
+			}, {			
+				"name": "2",
+				"scores": 0
+			}]
+		},
+		"result": 404,
+		"error": "team name not found"
+	}]
+}
