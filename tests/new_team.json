@@ -9,13 +9,13 @@
 			"players": [{
 				"name": "tiger",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "rabbit",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "fox",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "wolf",
 				"scores": 0
 			}]
@@ -29,13 +29,13 @@
 			"players": [{
 				"name": "apple",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "pine",
 				"scores": 1
-			}, {			
+			}, {
 				"name": "plum",
 				"scores": 2
-			}, {			
+			}, {
 				"name": "peach",
 				"scores": 3
 			}]
@@ -50,10 +50,10 @@
 			"players": [{
 				"name": "cucumber",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "tomato",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "potato",
 				"scores": 0
 			}]
@@ -67,7 +67,7 @@
 			"players": [{
 				"name": "1",
 				"scores": 0
-			}, {			
+			}, {
 				"name": "2",
 				"scores": 0
 			}]
@@ -81,15 +81,36 @@
 			"players": [{
 				"name": "cucumber",
 				"scores": 4
-			}, {			
+			}, {
 				"name": "tomato",
 				"scores": 3
-			}, {			
+			}, {
 				"name": "potato",
 				"scores": 8
 			}]
 		},
 		"result": 200,
 		"error": null
-	}]
+	},
+	{"method": "/api/team", "body": {"hours": -1, "name": "l1", "pin": "l1", "scores": 3}},
+	{"method": "/api/team", "body": {"hours": -10, "name": "l2", "pin": "l2", "scores": 1}},
+	{"method": "/api/team", "body": {"hours": -100, "name": "l3", "pin": "l3", "scores": 30}},
+	{"method": "/api/team", "body": {"hours": -15, "name": "l4", "pin": "l4", "scores": 14}},
+	{"method": "/api/team", "body": {"hours": -1000, "name": "l5", "pin": "l5", "scores": 25}},
+	{"method": "/api/team", "body": {"hours": -2000, "name": "l6", "pin": "l6", "scores": 47}},
+	{"method": "/api/team", "body": {"hours": -700, "name": "l7", "pin": "l7", "scores": 13}},
+	{"method": "/api/team", "body": {"hours": -8, "name": "l8", "pin": "l9", "scores": 4}},
+	{"method": "/api/team", "body": {"hours": -2, "name": "l9", "pin": "l9", "scores": 10}},
+	{"method": "/api/team", "body": {"hours": -50, "name": "l10", "pin": "l10", "scores": 7}},
+	{"method": "/api/team", "body": {"hours": -60, "name": "l11", "pin": "l11", "scores": 100}},
+	{"method": "/api/team", "body": {"hours": -780, "name": "l12", "pin": "l12", "scores": 20}},
+	{"method": "/api/team", "body": {"hours": -600, "name": "l13", "pin": "l13", "scores": 13}},
+	{"method": "/api/team", "body": {"hours": -15, "name": "l14", "pin": "l14", "scores": 8}},
+	{"method": "/api/team", "body": {"hours": -1500, "name": "l15", "pin": "l15", "scores": 8}},
+	{"method": "/api/team", "body": {"hours": -120, "name": "l16", "pin": "l16", "scores": 8}},
+	{"method": "/api/team", "body": {"hours": -900, "name": "l17", "pin": "l17", "scores": 8}},
+	{"method": "/api/team", "body": {"hours": -3000, "name": "l18", "pin": "l18", "scores": 8}},
+	{"method": "/api/team", "body": {"hours": -15, "name": "l19", "pin": "l19", "scores": 8}},
+	{"method": "/api/team", "body": {"hours": -30, "name": "l20", "pin": "l20", "scores": 11}}
+	]
 }

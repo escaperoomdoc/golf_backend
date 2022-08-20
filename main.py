@@ -26,10 +26,14 @@ HTTP_SERVER_PORT: int = int(os.getenv('HTTP_SERVER_PORT') or 80)
 DATABASE_PATH: str = os.getenv('DATABASE_PATH')
 PIN_ORDER: int = int(os.getenv('PIN_ORDER') or 3)
 PIN_TIMEOUT: int = int(os.getenv('PIN_TIMEOUT') or 86400000)
+EMULATE_TIME: int = int(os.getenv('EMULATE_TIME') or 0)
+
 
 class GolfTeams:
     @staticmethod
     def now() -> int:
+        if EMULATE_TIME:
+            return EMULATE_TIME
         return int(time.time() * 1000)
 
     @staticmethod
@@ -74,6 +78,17 @@ class GolfTeams:
             error = 'GolfTeams.create_teams_table() exception: ' + e.args[0]
             raise ValueError(error)
 
+    def get_teamlist(self) -> list:
+        try:
+            self.cur.execute(f'''
+             SELECT name FROM teams;
+            ''')
+            rows = self.cur.fetchall()
+            return rows
+        except Exception as e:
+            error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
+            raise ValueError(error)
+
     def get_team(self, id=0, name='', pin='') -> list:
         try:
             now: int = GolfTeams.now()
@@ -113,6 +128,8 @@ class GolfTeams:
             pin: str = None
             if 'pin' in data:
                 pin = data['pin']
+            if 'hours' in data:
+                now += data['hours'] * 3600000
             while not pin:
                 pin_candidate = GolfTeams.generate_pin()
                 teams = self.get_team(pin=pin_candidate)
@@ -121,8 +138,12 @@ class GolfTeams:
                     break
                 time.sleep(0.1)
             name: str = data['name']
-            results = json.dumps(data['players'], separators=(',', ':'))
-            scores = self.calculate_scores(data['players'])
+            if 'players' in data:
+                results = json.dumps(data['players'], separators=(',', ':'))
+                scores = self.calculate_scores(data['players'])
+            else:
+                results = {}
+                scores = data['scores'] if 'scores' in data else 0
             sql: str = f'''
              INSERT INTO teams(name,time,pin,results,scores)
              VALUES ('{name}',{now},'{pin}','{results}','{scores}');
@@ -163,6 +184,21 @@ class GolfTeams:
             error = 'GolfTeams.update_team() exception: ' + e.args[0]
             raise ValueError(error)
 
+    def get_rate(self, timefrom) -> list:
+        try:
+            sql=f'''
+             SELECT name,time,scores FROM teams
+             WHERE time>{timefrom}
+             ORDER BY scores DESC
+             LIMIT 10;
+            '''
+            self.cur.execute(sql)
+            rows = self.cur.fetchall()
+            return rows
+        except Exception as e:
+            error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
+            raise ValueError(error)
+
     def close(self):
         try:
             self.db.commit()
@@ -177,25 +213,59 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.gt.create_teams_table()
         BaseHTTPRequestHandler.__init__(self, *args)
 
-    def test_response(self, engines_version=1):
-        response = {
-            'engines': [],
-            'field': '1'
+    def get_teamlist(self):
+        data = self.gt.get_teamlist()
+        result = {
+            'teams': []
         }
-        text = json.dumps(response, separators=(',', ':')).encode()
-        return text
+        for item in data:
+            result['teams'].append(item[0])
+        return result
+
+    def get_team(self, pin):
+        data = self.gt.get_team(pin=pin)
+        if data and len(data) == 1:
+            return {
+                'id': data[0][0],
+                'name': data[0][1],
+                'pin': data[0][3],
+                'players': json.loads(data[0][4]),
+                'scores': data[0][5]
+            }
+        return {}
+
+    def get_leaderboard(self, timefrom):
+        rows = self.gt.get_rate(timefrom)
+        result = []
+        for item in rows:
+            result.append({
+                'name': item[0],
+                'scores': item[2]
+            })
+        return result
 
     def do_GET(self):
         try:
             parsed_path = urlparse(self.path)
             parsed_query = parse_qs(parsed_path.query)
-            response = '{}'.encode()
-            response = self.test_response()
+            response = {}
+            if parsed_path.path:
+                if parsed_path.path == '/api/teamlist':
+                    response = self.get_teamlist()
+                if parsed_path.path == '/api/team' and 'pin' in parsed_query:
+                    pin = parsed_query['pin']
+                    response = self.get_team(pin=pin[0])
+                if parsed_path.path == '/api/leaderboard':
+                    response = {
+                        'day': self.get_leaderboard(GolfTeams.now() - 86400000),
+                        'month': self.get_leaderboard(GolfTeams.now() - 30*86400000),
+                        'year': self.get_leaderboard(GolfTeams.now() - 365*86400000)
+                    }
             self.send_response(200)
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
-            self.wfile.write(response)
+            self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
         except Exception as e:
             print('do_GET() exception: ', e.args[0])
 
@@ -238,6 +308,7 @@ def web_server_thread_function(name):
 web_server_thread = threading.Thread(target=web_server_thread_function, args=(1,))
 web_server_thread.start()
 
+'''
 # tests
 f = open("./tests/new_team.json", "r")
 new_team_tests_text = f.read()
@@ -246,3 +317,4 @@ new_team_tests = json.loads(new_team_tests_text)
 for test in new_team_tests['test_teams']:
     req = test['body'] if 'body' in test else None
     r = requests.post(f'http://127.0.0.1:{HTTP_SERVER_PORT}{test["method"]}', json=req)
+'''
