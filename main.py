@@ -213,6 +213,12 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.gt.create_teams_table()
         BaseHTTPRequestHandler.__init__(self, *args)
 
+    def send_cors_headers(self):
+        """ Sets headers required for CORS """
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "x-api-key,Content-Type")
+
     def get_teamlist(self):
         data = self.gt.get_teamlist()
         result = {
@@ -262,7 +268,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                         'year': self.get_leaderboard(GolfTeams.now() - 365*86400000)
                     }
             self.send_response(200)
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_cors_headers()
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
@@ -285,14 +291,14 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 if parsed_path.path == '/api/results':
                     response = self.gt.update_results(post_body_json)
             self.send_response(200)
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_cors_headers()
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
         except Exception as e:
             print('do_POST() exception: ', e.args[0])
             self.send_response(400)
-            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_cors_headers()
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             response = {
