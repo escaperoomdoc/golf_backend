@@ -285,12 +285,14 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 if parsed_path.path == '/api/results':
                     response = self.gt.update_results(post_body_json)
             self.send_response(200)
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
         except Exception as e:
             print('do_POST() exception: ', e.args[0])
             self.send_response(400)
+            self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             response = {
