@@ -190,7 +190,7 @@ class GolfTeams:
              SELECT name,time,scores FROM teams
              WHERE time>{timefrom}
              ORDER BY scores DESC
-             LIMIT 10;
+             LIMIT 25;
             '''
             self.cur.execute(sql)
             rows = self.cur.fetchall()
