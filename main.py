@@ -23,7 +23,7 @@ load_dotenv()
 #ENGINES_EVENTS_HTTP_URL: str = os.getenv('ENGINES_EVENTS_HTTP_URL')
 
 HTTP_SERVER_PORT: int = int(os.getenv('HTTP_SERVER_PORT') or 80)
-DATABASE_PATH: str = os.getenv('DATABASE_PATH')
+DATABASE_PATH: str = os.getenv('DATABASE_PATH') or 'golf.db'
 PIN_ORDER: int = int(os.getenv('PIN_ORDER') or 3)
 PIN_TIMEOUT: int = int(os.getenv('PIN_TIMEOUT') or 86400000)
 EMULATE_TIME: int = int(os.getenv('EMULATE_TIME') or 0)
@@ -184,17 +184,48 @@ class GolfTeams:
             error = 'GolfTeams.update_team() exception: ' + e.args[0]
             raise ValueError(error)
 
-    def get_rate(self, timefrom) -> list:
+    def get_rate_by_team(self, timefrom) -> list:
         try:
+            results = []
             sql=f'''
              SELECT name,time,scores FROM teams
              WHERE time>{timefrom}
-             ORDER BY scores DESC
-             LIMIT 25;
+             ORDER BY scores DESC;
+            '''
+            #SQL -= LIMIT 25;
+            self.cur.execute(sql)
+            rows = self.cur.fetchall()
+            for row in rows:
+                results.append({
+                    'team': row[0],
+                    'scores': row[2]
+                })                
+            return results
+        except Exception as e:
+            error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
+            raise ValueError(error)
+
+    def get_rate_by_player(self, timefrom) -> list:
+        try:
+            results = []
+            sql=f'''
+             SELECT name,time,results FROM teams
+             WHERE time>{timefrom};
             '''
             self.cur.execute(sql)
             rows = self.cur.fetchall()
-            return rows
+            for row in rows:
+                if not row[2]:
+                    continue
+                scores = json.loads(row[2])
+                for score in scores:
+                    results.append({
+                        'team': row[0],
+                        'player': score['name'],
+                        'scores': score['scores']
+                    })
+            results = sorted(results, key=lambda x: x['scores'], reverse=True)
+            return results
         except Exception as e:
             error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
             raise ValueError(error)
@@ -240,15 +271,13 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             }
         return {}
 
-    def get_leaderboard(self, timefrom):
-        rows = self.gt.get_rate(timefrom)
-        result = []
-        for item in rows:
-            result.append({
-                'name': item[0],
-                'scores': item[2]
-            })
-        return result
+    def get_leaderboard(self, timefrom, sort_type='team'):
+        results = []
+        if (sort_type == 'team'):
+            results = self.gt.get_rate_by_team(timefrom)
+        if (sort_type == 'player'):
+            results = self.gt.get_rate_by_player(timefrom)
+        return results
 
     def do_OPTIONS(self):
         self.send_response(200)
@@ -267,10 +296,15 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     pin = parsed_query['pin']
                     response = self.get_team(pin=pin[0])
                 if parsed_path.path == '/api/leaderboard':
+                    sort_type = 'team'
+                    if parsed_query and 'type' in parsed_query:
+                        if parsed_query['type'][0] == 'player':
+                            sort_type = 'player'
                     response = {
-                        'day': self.get_leaderboard(GolfTeams.now() - 86400000),
-                        'month': self.get_leaderboard(GolfTeams.now() - 30*86400000),
-                        'year': self.get_leaderboard(GolfTeams.now() - 365*86400000)
+                        'day': self.get_leaderboard(GolfTeams.now() - 86400000, sort_type),
+                        'week': self.get_leaderboard(GolfTeams.now() - 7*86400000, sort_type)
+                        #'month': self.get_leaderboard(GolfTeams.now() - 30*86400000, sort_type),
+                        #'year': self.get_leaderboard(GolfTeams.now() - 365*86400000, sort_type)
                     }
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
