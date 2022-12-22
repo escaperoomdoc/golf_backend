@@ -188,18 +188,21 @@ class GolfTeams:
         try:
             results = []
             sql=f'''
-             SELECT name,time,scores FROM teams
-             WHERE time>{timefrom}
-             ORDER BY scores DESC;
+             SELECT name,time,scores,results FROM teams
+             WHERE time>{timefrom};
             '''
-            #SQL -= LIMIT 25;
             self.cur.execute(sql)
             rows = self.cur.fetchall()
             for row in rows:
+                results_json = json.loads(row[3])
+                players_count = len(results_json)
+                if players_count <= 0:
+                    continue
                 results.append({
                     'team': row[0],
-                    'scores': row[2]
-                })                
+                    'scores': row[2] / players_count
+                })
+            results = sorted(results, key=lambda x: x['scores'], reverse=True)
             return results
         except Exception as e:
             error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
