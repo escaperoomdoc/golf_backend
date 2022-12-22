@@ -1,13 +1,18 @@
 version: "3" 
 
 services:
-  golf_backend:
+  pub_golf_backend:
     build: .
-    container_name: "golf_backend"
+    container_name: "pub_golf_backend"
     volumes:
-      - ./data:/app/data
-    ports:
-      - "8080:8080"
+      - ./pub_data:/app/data
+    restart: always
+    
+  circus_golf_backend:
+    build: .
+    container_name: "circus_golf_backend"
+    volumes:
+      - ./circus_data:/app/data
     restart: always
 
 networks:
