@@ -4,6 +4,8 @@ services:
   pub_golf_backend:
     build: .
     container_name: "pub_golf_backend"
+    ports:
+      - "3001:8080"
     volumes:
       - ./pub_data:/app/data
     restart: always
@@ -11,6 +13,8 @@ services:
   circus_golf_backend:
     build: .
     container_name: "circus_golf_backend"
+    ports:
+      - "9001:8080"
     volumes:
       - ./circus_data:/app/data
     restart: always
