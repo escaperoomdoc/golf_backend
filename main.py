@@ -357,7 +357,8 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                         if post_body_json['state']:
                             alarms[post_body_json['id']] = post_body_json['state']
                         else:
-                            del alarms[post_body_json['id']]
+                            if post_body_json['id'] in alarms:
+                                del alarms[post_body_json['id']]
                     print(alarms)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
