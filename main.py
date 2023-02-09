@@ -28,6 +28,7 @@ PIN_ORDER: int = int(os.getenv('PIN_ORDER') or 3)
 PIN_TIMEOUT: int = int(os.getenv('PIN_TIMEOUT') or 86400000)
 EMULATE_TIME: int = int(os.getenv('EMULATE_TIME') or 0)
 
+alarms = {}
 
 class GolfTeams:
     @staticmethod
@@ -89,7 +90,7 @@ class GolfTeams:
             error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
             raise ValueError(error)
 
-    def get_team(self, id=0, name='', pin='') -> list:
+    def get_team(self, id=0, name='', pin='', today='') -> list:
         try:
             now: int = GolfTeams.now()
             condition: str = 'WHERE '
@@ -99,6 +100,8 @@ class GolfTeams:
                 condition += f'name={name}'
             elif pin != '':
                 condition += f'pin="{pin}" AND time>{now-PIN_TIMEOUT}'
+            elif today != '':
+                condition += f'time>{now-PIN_TIMEOUT}'
             else:
                 raise 'empty consition'
             self.cur.execute(f'''
@@ -262,7 +265,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             result['teams'].append(item[0])
         return result
 
-    def get_team(self, pin):
+    def get_team(self, pin=''):
         data = self.gt.get_team(pin=pin)
         if data and len(data) == 1:
             return {
@@ -273,6 +276,20 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 'scores': data[0][5]
             }
         return {}
+
+    def get_teams(self):
+        data = self.gt.get_team(today='+')
+        if not data: return {}
+        result = []
+        for item in data:
+            result.append({
+                'id': item[0],
+                'name': item[1],
+                'pin': item[3],
+                'players': json.loads(item[4]),
+                'scores': item[5]
+            })
+        return result
 
     def get_leaderboard(self, timefrom, sort_type='team'):
         results = []
@@ -298,6 +315,8 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 if parsed_path.path == '/api/team' and 'pin' in parsed_query:
                     pin = parsed_query['pin']
                     response = self.get_team(pin=pin[0])
+                if parsed_path.path == '/api/teams':
+                    response = self.get_teams()
                 if parsed_path.path == '/api/leaderboard':
                     sort_type = 'team'
                     if parsed_query and 'type' in parsed_query:
@@ -309,6 +328,8 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                         #'month': self.get_leaderboard(GolfTeams.now() - 30*86400000, sort_type),
                         #'year': self.get_leaderboard(GolfTeams.now() - 365*86400000, sort_type)
                     }
+                if parsed_path.path == '/api/alarms':
+                    response = alarms
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
@@ -331,6 +352,13 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     response = self.gt.new_team(post_body_json)
                 if parsed_path.path == '/api/results':
                     response = self.gt.update_results(post_body_json)
+                if parsed_path.path == '/api/alarm':
+                    if 'id' in post_body_json:
+                        if post_body_json['state']:
+                            alarms[post_body_json['id']] = post_body_json['state']
+                        else:
+                            del alarms[post_body_json['id']]
+                    print(alarms)
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
