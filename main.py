@@ -1,9 +1,9 @@
 import os
 import json
 from pickle import NONE
-import string
+import random
 from typing import Any
-import collections
+import datetime
 import threading
 import time
 from dotenv import load_dotenv
@@ -36,6 +36,10 @@ class GolfTeams:
         if EMULATE_TIME:
             return EMULATE_TIME
         return int(time.time() * 1000)
+
+    @staticmethod
+    def now_str() -> str:
+        return datetime.datetime.now().strftime("%H:%M:%S")
 
     @staticmethod
     def generate_pin(value=None) -> str:
@@ -300,14 +304,18 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         return results
 
     def do_OPTIONS(self):
+        request_id = random.randint(10000,100000)
+        print(f'{GolfTeams.now_str()} do_OPTIONS({request_id})')
         self.send_response(200)
         self.end_headers()
         pass
 
     def do_GET(self):
         try:
+            request_id = random.randint(10000,100000)
             parsed_path = urlparse(self.path)
             parsed_query = parse_qs(parsed_path.query)
+            print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} + {parsed_query}')
             response = {}
             if parsed_path.path:
                 if parsed_path.path == '/api/teamlist':
@@ -330,16 +338,20 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     }
                 if parsed_path.path == '/api/alarms':
                     response = alarms
+            print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} # logic done')
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
+            print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} # RESPONSED')
         except Exception as e:
-            print('do_GET() exception: ', e.args[0])
+            print(f'{GolfTeams.now_str()} do_GET({request_id}) exception: ', e.args[0])
 
     def do_POST(self):
         try:
+            request_id = random.randint(10000,100000)
             parsed_path = urlparse(self.path)
+            print(f'{GolfTeams.now_str()} do_POST({request_id}): {parsed_path.path}')
             response = {}
             content_len = int(self.headers.get('Content-Length'))
             if content_len > 0:
@@ -360,12 +372,14 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                             if post_body_json['id'] in alarms:
                                 del alarms[post_body_json['id']]
                     print(alarms)
+            print(f'{GolfTeams.now_str()} do_POST({request_id}): {parsed_path.path} # logic done')
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
+            print(f'{GolfTeams.now_str()} do_POST({request_id}): {parsed_path.path} # RESPONSED')
         except Exception as e:
-            print('do_POST() exception: ', e.args[0])
+            print(f'{GolfTeams.now_str()} do_POST({request_id}) exception: ', e.args[0])
             self.send_response(400)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
