@@ -391,13 +391,23 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         return
 
+httpd = HTTPServer(('0.0.0.0', HTTP_SERVER_PORT), HTTPRequestHandler)
+print(f'server listening {HTTP_SERVER_PORT} port...')
+try:
+    httpd.serve_forever()
+except KeyboardInterrupt:
+    pass
+httpd.server_close()
+print("server stopped")
+
+'''
 def web_server_thread_function(name):
     httpd = HTTPServer(('', HTTP_SERVER_PORT), HTTPRequestHandler)
     httpd.serve_forever()
 
 web_server_thread = threading.Thread(target=web_server_thread_function, args=(1,))
 web_server_thread.start()
-
+'''
 '''
 # tests
 f = open("./tests/new_team.json", "r")
