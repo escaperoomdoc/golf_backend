@@ -11,6 +11,8 @@ import random
 
 import sqlite3
 import requests
+from requests.adapters import HTTPAdapter
+import urllib.request
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -27,8 +29,8 @@ DATABASE_PATH: str = os.getenv('DATABASE_PATH') or 'golf.db'
 PIN_ORDER: int = int(os.getenv('PIN_ORDER') or 3)
 PIN_TIMEOUT: int = int(os.getenv('PIN_TIMEOUT') or 86400000)
 EMULATE_TIME: int = int(os.getenv('EMULATE_TIME') or 0)
+emulate_watchdog_issue: bool = False
 
-alarms = {}
 
 class GolfTeams:
     @staticmethod
@@ -50,11 +52,32 @@ class GolfTeams:
     def __init__(self, dbname: str):
         self.db: sqlite3.Connection = None
         self.cur: sqlite3.Cursor = None
+        self.alarms = {}
+        self.read_alarms()
         try:
             self.db = sqlite3.connect(dbname)
             self.cur = self.db.cursor()
         except Exception as e:
             print('GolfTeams.__init__() exception: ', e.args[0])
+
+    def read_alarms(self):
+        try:
+            f = open('./alarms.json', 'r', encoding='utf-8')
+            alarms_json = f.read()
+            self.alarms = json.loads(alarms_json)
+            f.close()
+        except Exception as e:
+            self.alarms = {}
+            print('GolfTeams.read_alarms() exception: ', e.args[0])
+
+    def write_alarms(self):
+        try:
+            f = open('./alarms.json', 'w', encoding='utf-8')
+            alarms_json = json.dumps(self.alarms)
+            f.write(alarms_json)
+            f.close()
+        except Exception as e:
+            print('GolfTeams.write_alarms() exception: ', e.args[0])
 
     def drop_teams_table(self):
         try:
@@ -248,20 +271,18 @@ class GolfTeams:
             error = 'GolfTeams.close() exception: ' + e.args[0]
             raise ValueError(error)
 
-class HTTPRequestHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args):
-        self.gt: GolfTeams = GolfTeams(DATABASE_PATH)
-        self.gt.create_teams_table()
-        BaseHTTPRequestHandler.__init__(self, *args)
+golf_teams = GolfTeams(DATABASE_PATH)
+golf_teams.create_teams_table()
 
+class HTTPRequestHandler(BaseHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST")
         self.send_header("Access-Control-Allow-Headers", "x-api-key,Content-Type")
         BaseHTTPRequestHandler.end_headers(self)
 
     def get_teamlist(self):
-        data = self.gt.get_teamlist()
+        data = golf_teams.get_teamlist()
         result = {
             'teams': []
         }
@@ -270,7 +291,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         return result
 
     def get_team(self, pin=''):
-        data = self.gt.get_team(pin=pin)
+        data = golf_teams.get_team(pin=pin)
         if data and len(data) == 1:
             return {
                 'id': data[0][0],
@@ -282,7 +303,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         return {}
 
     def get_teams(self):
-        data = self.gt.get_team(today='+')
+        data = golf_teams.get_team(today='+')
         if not data: return {}
         result = []
         for item in data:
@@ -298,19 +319,20 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     def get_leaderboard(self, timefrom, sort_type='team'):
         results = []
         if (sort_type == 'team'):
-            results = self.gt.get_rate_by_team(timefrom)
+            results = golf_teams.get_rate_by_team(timefrom)
         if (sort_type == 'player'):
-            results = self.gt.get_rate_by_player(timefrom)
+            results = golf_teams.get_rate_by_player(timefrom)
         return results
 
-    def do_OPTIONS(self):
-        request_id = random.randint(10000,100000)
-        print(f'{GolfTeams.now_str()} do_OPTIONS({request_id})')
-        self.send_response(200)
-        self.end_headers()
-        pass
+    # def do_OPTIONS(self):
+    #     request_id = random.randint(10000,100000)
+    #     print(f'{GolfTeams.now_str()} do_OPTIONS({request_id})')
+    #     self.send_response(200)
+    #     self.end_headers()
+    #     pass
 
     def do_GET(self):
+        global emulate_watchdog_issue
         try:
             request_id = random.randint(10000,100000)
             parsed_path = urlparse(self.path)
@@ -318,6 +340,9 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} + {parsed_query}')
             response = {}
             if parsed_path.path:
+                if parsed_path.path == '/api/emulate_watchdog_issue':
+                    emulate_watchdog_issue = True
+                    pass
                 if parsed_path.path == '/api/teamlist':
                     response = self.get_teamlist()
                 if parsed_path.path == '/api/team' and 'pin' in parsed_query:
@@ -337,15 +362,25 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                         #'year': self.get_leaderboard(GolfTeams.now() - 365*86400000, sort_type)
                     }
                 if parsed_path.path == '/api/alarms':
-                    response = alarms
-            print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} # logic done')
+                    response = golf_teams.alarms
+            print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} # logic done')            
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
+            #self.finish()
             print(f'{GolfTeams.now_str()} do_GET({request_id}): {parsed_path.path} # RESPONSED')
         except Exception as e:
             print(f'{GolfTeams.now_str()} do_GET({request_id}) exception: ', e.args[0])
+            self.send_response(400)
+            '''
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            response = {
+                'error': e.args[0]
+            }
+            self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
+            '''
 
     def do_POST(self):
         try:
@@ -359,37 +394,82 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                 post_body_json = json.loads(post_body_text)
             if parsed_path.path:
                 if parsed_path.path == '/api/dropteams':
-                    self.gt.drop_teams_table()
+                    golf_teams.drop_teams_table()
                 if parsed_path.path == '/api/team':
-                    response = self.gt.new_team(post_body_json)
+                    response = golf_teams.new_team(post_body_json)
                 if parsed_path.path == '/api/results':
-                    response = self.gt.update_results(post_body_json)
+                    response = golf_teams.update_results(post_body_json)
                 if parsed_path.path == '/api/alarm':
                     if 'id' in post_body_json:
                         if post_body_json['state']:
-                            alarms[post_body_json['id']] = post_body_json['state']
+                            golf_teams.alarms[str(post_body_json['id'])] = post_body_json['state']
+                            golf_teams.write_alarms()
                         else:
-                            if post_body_json['id'] in alarms:
-                                del alarms[post_body_json['id']]
-                    print(alarms)
+                            if post_body_json['id'] in golf_teams.alarms:
+                                del golf_teams.alarms[post_body_json['id']]
+                                golf_teams.write_alarms()
+                    print(golf_teams.alarms)
             print(f'{GolfTeams.now_str()} do_POST({request_id}): {parsed_path.path} # logic done')
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
+            #self.finish()
             print(f'{GolfTeams.now_str()} do_POST({request_id}): {parsed_path.path} # RESPONSED')
         except Exception as e:
             print(f'{GolfTeams.now_str()} do_POST({request_id}) exception: ', e.args[0])
             self.send_response(400)
+            '''
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             response = {
                 'error': e.args[0]
             }
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
+            '''
 
     def log_message(self, format, *args):
         return
+
+def is_watchdog_ok():
+    if emulate_watchdog_issue:
+        return False
+    #if random.randint(0,100) > 50:
+    #    return False
+    return True
+
+
+def watchdog_thread_function(name):
+    error_counter = 0
+    watchdog_url = f'http://127.0.0.1/api/alarms'
+    watchdog_error_emulation_url = f'http://128.0.1.1:{HTTP_SERVER_PORT}/api/alarms'
+    while True:
+        #time.sleep(1000000)
+        url = watchdog_url if is_watchdog_ok() else watchdog_error_emulation_url
+        print('WATCHDOG REQUEST:', url)
+        try:
+            #result = urllib.request.urlopen(url, timeout=5) #if result.status == 200: 
+            #with requests.Session() as s:
+            #    s.mount("https://", HTTPAdapter(max_retries=3))
+            #    result = s.get(url, timeout=5, stream=True)
+            #    s.close()
+            result = requests.get(url, timeout=5)
+            if result.status_code == 200:
+                error_counter = 0
+            else:
+                error_counter += 1
+        except Exception as e:
+            error_counter += 1
+            result = None
+            #s.close()
+        print('WATCHDOG RESULT:', result, error_counter)
+        if error_counter >= 10:
+            break
+        time.sleep(1)
+    exit(-1)
+
+web_server_thread = threading.Thread(target=watchdog_thread_function, args=(1,))
+web_server_thread.start()
 
 httpd = HTTPServer(('0.0.0.0', HTTP_SERVER_PORT), HTTPRequestHandler)
 print(f'server listening {HTTP_SERVER_PORT} port...')
