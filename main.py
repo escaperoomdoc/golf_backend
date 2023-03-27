@@ -330,7 +330,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     #     self.send_response(200)
     #     self.end_headers()
     #     pass
-
+    
     def do_GET(self):
         global emulate_watchdog_issue
         try:
@@ -373,14 +373,6 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f'{GolfTeams.now_str()} do_GET({request_id}) exception: ', e.args[0])
             self.send_response(400)
-            '''
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            response = {
-                'error': e.args[0]
-            }
-            self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
-            '''
 
     def do_POST(self):
         try:
@@ -401,12 +393,13 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
                     response = golf_teams.update_results(post_body_json)
                 if parsed_path.path == '/api/alarm':
                     if 'id' in post_body_json:
+                        id = str(post_body_json['id'])
                         if post_body_json['state']:
-                            golf_teams.alarms[str(post_body_json['id'])] = post_body_json['state']
+                            golf_teams.alarms[id] = post_body_json['state']
                             golf_teams.write_alarms()
                         else:
-                            if post_body_json['id'] in golf_teams.alarms:
-                                del golf_teams.alarms[post_body_json['id']]
+                            if id in golf_teams.alarms:
+                                del golf_teams.alarms[id]
                                 golf_teams.write_alarms()
                     print(golf_teams.alarms)
             print(f'{GolfTeams.now_str()} do_POST({request_id}): {parsed_path.path} # logic done')
