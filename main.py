@@ -14,6 +14,7 @@ import requests
 from requests.adapters import HTTPAdapter
 import urllib.request
 from http.server import HTTPServer, BaseHTTPRequestHandler
+from socketserver import ThreadingMixIn
 from urllib.parse import urlparse, parse_qs
 
 # Method 1: Format String
@@ -55,6 +56,7 @@ class GolfTeams:
         self.cur: sqlite3.Cursor = None
         self.alarms = {}
         self.read_alarms()
+        self.mutex = threading.Lock()
         try:
             self.db = sqlite3.connect(dbname)
             self.cur = self.db.cursor()
@@ -280,6 +282,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "x-api-key,Content-Type")
+        self.send_header("Connection", "close")
         BaseHTTPRequestHandler.end_headers(self)
 
     def get_teamlist(self):
@@ -334,6 +337,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
     
     def do_GET(self):
         global emulate_watchdog_issue
+        golf_teams.mutex.acquire()
         try:
             request_id = random.randint(10000,100000)
             parsed_path = urlparse(self.path)
@@ -374,8 +378,10 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f'{GolfTeams.now_str()} do_GET({request_id}) exception: ', e.args[0])
             self.send_response(400)
+        golf_teams.mutex.release()
 
     def do_POST(self):
+        golf_teams.mutex.acquire()
         try:
             request_id = random.randint(10000,100000)
             parsed_path = urlparse(self.path)
@@ -421,6 +427,7 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             }
             self.wfile.write(json.dumps(response, separators=(',', ':')).encode())
             '''
+        golf_teams.mutex.release()
 
     def log_message(self, format, *args):
         return
@@ -465,7 +472,10 @@ def watchdog_thread_function(name):
 web_server_thread = threading.Thread(target=watchdog_thread_function, args=(1,))
 web_server_thread.start()
 
-httpd = HTTPServer(('0.0.0.0', HTTP_SERVER_PORT), HTTPRequestHandler)
+class ThreadingSimpleServer(ThreadingMixIn, HTTPServer):
+    pass
+
+httpd = ThreadingSimpleServer(('0.0.0.0', HTTP_SERVER_PORT), HTTPRequestHandler)
 print(f'server listening {HTTP_SERVER_PORT} port...')
 try:
     httpd.serve_forever()
