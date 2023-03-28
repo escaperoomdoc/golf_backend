@@ -277,7 +277,7 @@ golf_teams.create_teams_table()
 class HTTPRequestHandler(BaseHTTPRequestHandler):
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET,POST")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "x-api-key,Content-Type")
         BaseHTTPRequestHandler.end_headers(self)
 
@@ -324,12 +324,12 @@ class HTTPRequestHandler(BaseHTTPRequestHandler):
             results = golf_teams.get_rate_by_player(timefrom)
         return results
 
-    # def do_OPTIONS(self):
-    #     request_id = random.randint(10000,100000)
-    #     print(f'{GolfTeams.now_str()} do_OPTIONS({request_id})')
-    #     self.send_response(200)
-    #     self.end_headers()
-    #     pass
+    def do_OPTIONS(self):
+        request_id = random.randint(10000,100000)
+        print(f'{GolfTeams.now_str()} do_OPTIONS({request_id})')
+        self.send_response(200)
+        self.end_headers()
+        pass
     
     def do_GET(self):
         global emulate_watchdog_issue
