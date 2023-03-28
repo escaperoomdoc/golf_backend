@@ -12,6 +12,7 @@ services:
     environment:
       DATABASE_PATH: "./data/golf.db"
       PIN_ORDER: "4"
+      ALARMS_PATH: "./data/alarms.json"
 
     
   circus_golf_backend:
@@ -25,6 +26,7 @@ services:
     environment:
       DATABASE_PATH: "./data/golf.db"
       PIN_ORDER: "4"
+      ALARMS_PATH: "./data/alarms.json"
 
 networks:
   default:
