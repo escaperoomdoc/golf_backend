@@ -4,27 +4,16 @@ services:
   pub_golf_backend:
     build: .
     container_name: "pub_golf_backend"
-    ports:
-      - "3001:80"
     volumes:
       - ./pub_data:/app/data
     restart: always
-    environment:
-      DATABASE_PATH: "./data/golf.db"
-      PIN_ORDER: "4"
-
     
   circus_golf_backend:
     build: .
     container_name: "circus_golf_backend"
-    ports:
-      - "9001:80"
     volumes:
       - ./circus_data:/app/data
     restart: always
-    environment:
-      DATABASE_PATH: "./data/golf.db"
-      PIN_ORDER: "4"
 
 networks:
   default:

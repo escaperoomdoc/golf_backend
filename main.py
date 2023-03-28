@@ -26,6 +26,7 @@ load_dotenv()
 
 HTTP_SERVER_PORT: int = int(os.getenv('HTTP_SERVER_PORT') or 80)
 DATABASE_PATH: str = os.getenv('DATABASE_PATH') or 'golf.db'
+ALARMS_PATH: str = os.getenv('ALARMS_PATH') or './alarms.json'
 PIN_ORDER: int = int(os.getenv('PIN_ORDER') or 3)
 PIN_TIMEOUT: int = int(os.getenv('PIN_TIMEOUT') or 86400000)
 EMULATE_TIME: int = int(os.getenv('EMULATE_TIME') or 0)
@@ -62,7 +63,7 @@ class GolfTeams:
 
     def read_alarms(self):
         try:
-            f = open('./alarms.json', 'r', encoding='utf-8')
+            f = open(ALARMS_PATH, 'r', encoding='utf-8')
             alarms_json = f.read()
             self.alarms = json.loads(alarms_json)
             f.close()
@@ -72,7 +73,7 @@ class GolfTeams:
 
     def write_alarms(self):
         try:
-            f = open('./alarms.json', 'w', encoding='utf-8')
+            f = open(ALARMS_PATH, 'w', encoding='utf-8')
             alarms_json = json.dumps(self.alarms)
             f.write(alarms_json)
             f.close()
@@ -434,7 +435,7 @@ def is_watchdog_ok():
 
 def watchdog_thread_function(name):
     error_counter = 0
-    watchdog_url = f'http://127.0.0.1/api/alarms'
+    watchdog_url = f'http://127.0.0.1:{HTTP_SERVER_PORT}/api/alarms'
     watchdog_error_emulation_url = f'http://128.0.1.1:{HTTP_SERVER_PORT}/api/alarms'
     while True:
         #time.sleep(1000000)
