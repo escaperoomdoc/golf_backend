@@ -233,7 +233,7 @@ class GolfTeams:
                     'team': row[0],
                     'scores': row[2] / players_count
                 })
-            results = sorted(results, key=lambda x: x['scores'], reverse=True)
+            results = sorted(results, key=lambda x: x['scores'], reverse=False)
             return results
         except Exception as e:
             error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
@@ -258,7 +258,7 @@ class GolfTeams:
                         'player': score['name'],
                         'scores': score['scores']
                     })
-            results = sorted(results, key=lambda x: x['scores'], reverse=True)
+            results = sorted(results, key=lambda x: x['scores'], reverse=False)
             return results
         except Exception as e:
             error = 'GolfTeams.get_teamlist() exception: ' + e.args[0]
