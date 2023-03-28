@@ -58,7 +58,7 @@ class GolfTeams:
         self.read_alarms()
         self.mutex = threading.Lock()
         try:
-            self.db = sqlite3.connect(dbname)
+            self.db = sqlite3.connect(dbname, check_same_thread=False)
             self.cur = self.db.cursor()
         except Exception as e:
             print('GolfTeams.__init__() exception: ', e.args[0])
